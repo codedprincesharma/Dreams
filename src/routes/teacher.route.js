@@ -2,12 +2,14 @@ import express from "express";
 import {
   addTeacher,
   getTeachersBySchool,
+  getMySchoolTeachers,
   getTeacherById,
   updateTeacher,
-  deleteTeacher
+  deleteTeacher,
+  getTeacherProfile
 } from "../controller/teacher.controller.js";
 import { auth } from "../middleware/auth.middleware.js";
-import { isAdmin, isPrincipal } from "../middleware/role.moddleware.js";
+import { isAdmin, isPrincipal, allowRoles } from "../middleware/role.moddleware.js";
 
 const router = express.Router();
 
@@ -57,7 +59,9 @@ const router = express.Router();
  *       200:
  *         description: Teacher added successfully
  */
-router.post("/", auth, isAdmin, addTeacher);
+router.post("/", auth, allowRoles("admin", "principal"), addTeacher);
+router.get("/", auth, allowRoles("admin", "principal"), getMySchoolTeachers);
+router.get("/profile", auth, allowRoles("teacher"), getTeacherProfile);
 
 /**
  * @swagger

@@ -4,6 +4,7 @@ import {
   getExamTypesBySchool,
   createExam,
   getExamsBySchool,
+  getAllExams,
   updateExamStatus,
   createSubjectPaper,
   getSubjectPapersByExam,
@@ -140,6 +141,20 @@ router.post("/", auth, isAdmin, createExam);
  *         description: List of exams
  */
 router.get("/school/:school_id", auth, getExamsBySchool);
+
+/**
+ * @swagger
+ * /exams/all:
+ *   get:
+ *     summary: Get all exams (Super Admin only)
+ *     tags: [Exams]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all exams
+ */
+router.get("/all", auth, isAdmin, getAllExams);
 
 /**
  * @swagger

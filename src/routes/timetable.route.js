@@ -4,10 +4,11 @@ import {
   getClassTimetable,
   generateTeacherTimetables,
   getTeacherTimetable,
-  getClassTimetablesBySchool
+  getClassTimetablesBySchool,
+  getStudentTimetable
 } from "../controller/timetable.controller.js";
 import { auth } from "../middleware/auth.middleware.js";
-import { isAdmin, isPrincipal } from "../middleware/role.moddleware.js";
+import { isAdmin, isPrincipal, allowRoles } from "../middleware/role.moddleware.js";
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ const router = express.Router();
  *       200:
  *         description: Class timetable created/updated successfully
  */
-router.post("/class", auth, isAdmin, createClassTimetable);
+router.post("/class", auth, allowRoles("admin", "principal"), createClassTimetable);
 
 /**
  * @swagger
@@ -103,7 +104,7 @@ router.get("/class/:school_id/:class", auth, getClassTimetable);
  *       200:
  *         description: Teacher timetables generated successfully
  */
-router.post("/generate-teachers", auth, isAdmin, generateTeacherTimetables);
+router.post("/generate-teachers", auth, allowRoles("admin", "principal"), generateTeacherTimetables);
 
 /**
  * @swagger
@@ -144,5 +145,6 @@ router.get("/teacher/:teacher_id", auth, getTeacherTimetable);
  *         description: List of class timetables
  */
 router.get("/classes/:school_id", auth, getClassTimetablesBySchool);
+router.get("/student/:school_id/:class", auth, getStudentTimetable);
 
 export default router;

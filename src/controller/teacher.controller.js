@@ -9,6 +9,13 @@ export const addTeacher = async (req, res) => {
   try {
     const { name, email, password, classes, subjects, is_class_teacher, class_teacher_for, school_id } = req.body;
 
+    // Determine School ID: Use body (Admin) or fallback to logged-in user's school (Principal)
+    const finalSchoolId = school_id || (req.user?.role === 'principal' ? req.user.school_id : null);
+
+    if (!finalSchoolId) {
+      return res.status(400).json({ message: "School ID is required" });
+    }
+
     // Create user first
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
@@ -16,7 +23,7 @@ export const addTeacher = async (req, res) => {
       email,
       password: hashedPassword,
       role: "teacher",
-      school_id,
+      school_id: finalSchoolId,
       classes,
       subjects
     });
@@ -24,7 +31,7 @@ export const addTeacher = async (req, res) => {
     // Create teacher profile
     const teacher = await Teacher.create({
       user_id: user._id,
-      school_id,
+      school_id: finalSchoolId,
       name,
       classes,
       subjects,
@@ -44,6 +51,18 @@ export const addTeacher = async (req, res) => {
 export const getTeachersBySchool = async (req, res) => {
   try {
     const { school_id } = req.params;
+    const teachers = await Teacher.find({ school_id }).populate('user_id', 'email');
+    res.json({ success: true, teachers });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const getMySchoolTeachers = async (req, res) => {
+  try {
+    const school_id = req.user.school_id;
+    if (!school_id) return res.status(400).json({ message: "No school associated with this user" });
+
     const teachers = await Teacher.find({ school_id }).populate('user_id', 'email');
     res.json({ success: true, teachers });
   } catch (err) {
@@ -101,5 +120,18 @@ export const deleteTeacher = async (req, res) => {
     res.json({ success: true, message: "Teacher deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+export const getTeacherProfile = async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ user_id: req.user.id })
+      .populate("user_id", "email role");
+
+    if (!teacher) return res.status(404).json({ message: "Teacher profile not found" });
+
+    res.json({ success: true, teacher });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

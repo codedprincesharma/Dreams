@@ -40,6 +40,18 @@ export const createExam = async (req, res) => {
 };
 
 // =======================================================
+// GET ALL EXAMS (Super Admin only)
+// =======================================================
+export const getAllExams = async (req, res) => {
+  try {
+    const exams = await Exam.find().populate('exam_type_id').populate('school_id', 'school_name');
+    res.json({ success: true, exams });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// =======================================================
 // GET EXAMS BY SCHOOL
 // =======================================================
 export const getExamsBySchool = async (req, res) => {

@@ -6,7 +6,7 @@ export const syncLessonForSchool = async (school_id, master_id) => {
 
   let schoolLesson = await SchoolLessonPlan.findOne({ school_id, master_id });
 
-  // CREATE COPY IF NOT EXISTS
+  // CREATE COPY IF NOT EXISTS 
   if (!schoolLesson) {
     schoolLesson = await SchoolLessonPlan.create({
       school_id,
@@ -30,3 +30,4 @@ export const syncLessonForSchool = async (school_id, master_id) => {
 
   return schoolLesson;
 };
+

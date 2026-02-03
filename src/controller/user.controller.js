@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import redis from "../config/redis.js";
+import env_config from "../config/env.config.js";
 import {
   generateAccessToken,
   generateRefreshToken
@@ -30,9 +31,40 @@ export const register = async (req, res) => {
       subjects
     });
 
-    return res.json({ success: true, user });
+    // Generate tokens for immediate login after registration
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token in Redis
+    await redis.set(
+      `refresh:${user._id}`,
+      refreshToken,
+      "EX",
+      60 * 60 * 24 * 30 // 30 days
+    );
+
+    // Set refresh token cookie
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: false, // true in production
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({
+      success: true,
+      accessToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        school_id: user.school_id
+      }
+    });
 
   } catch (err) {
+    console.error("REGISTER ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -47,48 +79,62 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // 1. Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
+
+    // 2. Find user
     const user = await User.findOne({ email });
-    if (!user)
+    if (!user) {
       return res.status(400).json({ message: "User not found" });
+    }
 
-    const validPass = await bcrypt.compare(password, user.password);
-    if (!validPass)
+    // 3. Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-    // Generate tokens
+    // 4. Generate tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Save refresh token in redis (linked to user)
-  await redis.set(
-  `refresh:${user._id}`,
-  refreshToken,
-  "EX",
-  60 * 60 * 24 * 30  // 30 days
-);
-    // Store refresh token in secure cookie
+    // 5. Store refresh token in Redis
+    await redis.set(
+      `refresh:${user._id}`,
+      refreshToken,
+      "EX",
+      60 * 60 * 24 * 30 // 30 days
+    );
+
+    // 6. Set refresh token cookie (LOCAL SAFE)
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 30 * 24 * 60 * 60 * 1000
+      secure: false,   // true in production (HTTPS)
+      sameSite: "lax", // "none" in production
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({
+    // 7. Send response
+    return res.status(200).json({
       success: true,
       accessToken,
       user: {
         id: user._id,
+        name: user.name,
+        email: user.email,
         role: user.role,
-        school_id: user.school_id
-      }
+        school_id: user.school_id,
+      },
     });
 
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
+    return res.status(500).json({ message: "Server error during login" });
   }
 };
+
 
 
 // =======================================================
@@ -101,7 +147,7 @@ export const refreshAccessToken = async (req, res) => {
     if (!refreshToken)
       return res.status(403).json({ message: "No refresh token" });
 
-    const decoded = jwt.verify(refreshToken, "08a5c43d0c80ebc15013fd0e958509b4");
+    const decoded = jwt.verify(refreshToken, env_config.REFRESH_TOKEN_SECRET);
 
     const storedToken = await redis.get(`refresh:${decoded.id}`);
     if (!storedToken || storedToken !== refreshToken)

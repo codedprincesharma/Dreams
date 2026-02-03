@@ -2,12 +2,16 @@ import express from "express";
 import {
   addStudent,
   getStudentsBySchool,
+  getMySchoolStudents,
   getStudentById,
   updateStudent,
-  deleteStudent
+  deleteStudent,
+  getStudentProfile,
+  getStudentSyllabus,
+  getStudentAttendance
 } from "../controller/student.controller.js";
 import { auth } from "../middleware/auth.middleware.js";
-import { isAdmin, isPrincipal } from "../middleware/role.moddleware.js";
+import { isAdmin, isPrincipal, isStudent, allowRoles } from "../middleware/role.moddleware.js";
 
 const router = express.Router();
 
@@ -30,11 +34,11 @@ const router = express.Router();
  *               - email
  *               - password
  *               - class
+ *               - section
  *               - school_roll_no
  *               - class_roll_no
  *               - parent_name
  *               - contact_number
- *               - school_id
  *             properties:
  *               name:
  *                 type: string
@@ -43,6 +47,8 @@ const router = express.Router();
  *               password:
  *                 type: string
  *               class:
+ *                 type: string
+ *               section:
  *                 type: string
  *               school_roll_no:
  *                 type: string
@@ -60,7 +66,8 @@ const router = express.Router();
  *       200:
  *         description: Student added successfully
  */
-router.post("/", auth, isAdmin, addStudent);
+router.post("/", auth, allowRoles("admin", "principal", "teacher"), addStudent);
+router.get("/", auth, allowRoles("admin", "principal", "teacher"), getMySchoolStudents);
 
 /**
  * @swagger
@@ -147,5 +154,10 @@ router.put("/:id", auth, updateStudent);
  *         description: Student deleted successfully
  */
 router.delete("/:id", auth, deleteStudent);
+
+// STUDENT SELF-SERVICE
+router.get("/me/profile", auth, isStudent, getStudentProfile);
+router.get("/me/syllabus", auth, isStudent, getStudentSyllabus);
+router.get("/me/attendance", auth, isStudent, getStudentAttendance);
 
 export default router;

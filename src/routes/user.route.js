@@ -69,7 +69,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.post("/register",  register);
+router.post("/register", register);
 
 router.post("/register/admin", register);
 
@@ -264,7 +264,7 @@ router.get("/me", auth, getMyProfile);
  *       403:
  *         description: Forbidden
  */
-router.get("/", auth, isAdmin, getUsersByRole);
+router.get("/users", auth, isAdmin, getUsersByRole);
 
 /**
  * @swagger
@@ -314,7 +314,7 @@ router.get("/", auth, isAdmin, getUsersByRole);
  *       500:
  *         description: Server error
  */
-router.put("/:id", auth, isAdmin, updateUser);
+router.put("/users/:id", auth, isAdmin, updateUser);
 
 /**
  * @swagger
@@ -341,7 +341,7 @@ router.put("/:id", auth, isAdmin, updateUser);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", auth, isAdmin, deleteUser);
+router.delete("/users/:id", auth, isAdmin, deleteUser);
 
 /**
  * =======================================================
