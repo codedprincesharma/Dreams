@@ -2,10 +2,9 @@ import MasterLessonPlan from "../models/MasterLessonPlan.model.js";
 
 /**
  * =======================================================
- * ADMIN → Create Master Lesson
+ * ADMIN → CREATE / UPSERT MASTER LESSON
  * =======================================================
  */
-
 export const createMasterLesson = async (req, res) => {
   try {
     const { class: classNo, subject, week, lessons } = req.body;
@@ -14,25 +13,32 @@ export const createMasterLesson = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const lesson = await MasterLessonPlan.create({
-      class: classNo,
-      subject,
-      week,
-      lessons
-    });
+    const lesson = await MasterLessonPlan.findOneAndUpdate(
+      { class: classNo, subject, week },
+      {
+        lessons,
+        $inc: { version: 1 },
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      lesson
+      lesson,
+      message: "Master lesson saved (upsert)",
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * ADMIN → Update Master Lesson (Auto version++)
+ * ADMIN → UPDATE MASTER LESSON (Version++)
  * =======================================================
  */
 export const updateMasterLesson = async (req, res) => {
@@ -41,7 +47,7 @@ export const updateMasterLesson = async (req, res) => {
       req.params.id,
       {
         lessons: req.body.lessons,
-        $inc: { version: 1 }
+        $inc: { version: 1 },
       },
       { new: true }
     );
@@ -50,40 +56,38 @@ export const updateMasterLesson = async (req, res) => {
       return res.status(404).json({ message: "Master lesson not found" });
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: "Master lesson updated & will auto-sync",
-      updated
+      updated,
+      message: "Master lesson updated",
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * ADMIN → Get all master lessons
+ * COMMON → GET ALL MASTER LESSONS
  * =======================================================
  */
 export const getAllMasterLessons = async (req, res) => {
   try {
     const lessons = await MasterLessonPlan.find().sort({
       class: 1,
-      week: 1
+      subject: 1,
+      week: 1,
     });
 
-    return res.status(200).json({
-      success: true,
-      lessons
-    });
+    res.status(200).json({ success: true, lessons });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * ADMIN → Get master lesson by ID
+ * COMMON → GET MASTER LESSON BY ID
  * =======================================================
  */
 export const getMasterLessonById = async (req, res) => {
@@ -91,88 +95,78 @@ export const getMasterLessonById = async (req, res) => {
     const lesson = await MasterLessonPlan.findById(req.params.id);
 
     if (!lesson) {
-      return res.status(404).json({ message: "Master lesson not found" });
+      return res.status(404).json({ message: "Lesson not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      lesson
-    });
+    res.status(200).json({ success: true, lesson });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * COMMON → Get master lessons by class
+ * COMMON → GET BY CLASS
  * =======================================================
  */
 export const getMasterLessonsByClass = async (req, res) => {
   try {
-    const { classNo } = req.params;
-
     const lessons = await MasterLessonPlan.find({
-      class: classNo
+      class: req.params.classNo,
     }).sort({ week: 1 });
 
-    return res.status(200).json({
-      success: true,
-      lessons
-    });
+    res.status(200).json({ success: true, lessons });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * COMMON → Get master lessons by subject
+ * COMMON → GET BY SUBJECT
  * =======================================================
  */
 export const getMasterLessonsBySubject = async (req, res) => {
   try {
-    const { subject } = req.params;
-
     const lessons = await MasterLessonPlan.find({
-      subject
+      subject: req.params.subject,
     }).sort({ class: 1, week: 1 });
 
-    return res.status(200).json({
-      success: true,
-      lessons
-    });
+    res.status(200).json({ success: true, lessons });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * COMMON → Get master lessons by class + subject
+ * COMMON → GET BY CLASS + SUBJECT
  * =======================================================
  */
 export const getMasterLessonsByClassAndSubject = async (req, res) => {
   try {
     const { classNo, subject } = req.query;
 
+    if (!classNo || !subject) {
+      return res
+        .status(400)
+        .json({ message: "classNo and subject required" });
+    }
+
     const lessons = await MasterLessonPlan.find({
       class: classNo,
-      subject
+      subject,
     }).sort({ week: 1 });
 
-    return res.status(200).json({
-      success: true,
-      lessons
-    });
+    res.status(200).json({ success: true, lessons });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * COMMON → Get master lesson by class + week
+ * COMMON → GET BY CLASS + WEEK
  * =======================================================
  */
 export const getMasterLessonByWeek = async (req, res) => {
@@ -181,25 +175,22 @@ export const getMasterLessonByWeek = async (req, res) => {
 
     const lesson = await MasterLessonPlan.findOne({
       class: classNo,
-      week
+      week,
     });
 
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      lesson
-    });
+    res.status(200).json({ success: true, lesson });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * ADMIN → Delete master lesson
+ * ADMIN → DELETE MASTER LESSON
  * =======================================================
  */
 export const deleteMasterLesson = async (req, res) => {
@@ -207,44 +198,51 @@ export const deleteMasterLesson = async (req, res) => {
     const deleted = await MasterLessonPlan.findByIdAndDelete(req.params.id);
 
     if (!deleted) {
-      return res.status(404).json({ message: "Master lesson not found" });
+      return res.status(404).json({ message: "Lesson not found" });
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: "Master lesson deleted successfully"
+      message: "Master lesson deleted",
     });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
 /**
  * =======================================================
- * ADMIN → Duplicate master lesson (Reuse structure)
+ * ADMIN → DUPLICATE MASTER LESSON (SAFE)
  * =======================================================
  */
-
 export const duplicateMasterLesson = async (req, res) => {
   try {
     const original = await MasterLessonPlan.findById(req.params.id);
-
     if (!original) {
       return res.status(404).json({ message: "Original lesson not found" });
+    }
+
+    const exists = await MasterLessonPlan.findOne({
+      class: original.class,
+      subject: original.subject,
+      week: original.week + 1,
+    });
+
+    if (exists) {
+      return res
+        .status(409)
+        .json({ message: "Next week already exists" });
     }
 
     const duplicate = await MasterLessonPlan.create({
       class: original.class,
       subject: original.subject,
       week: original.week + 1,
-      lessons: original.lessons
+      lessons: original.lessons,
     });
 
-    return res.status(201).json({
-      success: true,
-      duplicate
-    });
+    res.status(201).json({ success: true, duplicate });
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };

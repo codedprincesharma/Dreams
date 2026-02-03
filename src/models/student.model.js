@@ -21,6 +21,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       required: true // PG-12
     },
+    section: {
+      type: String,
+      required: true
+    },
     school_roll_no: {
       type: String,
       required: true

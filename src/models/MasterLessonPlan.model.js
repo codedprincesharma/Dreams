@@ -1,50 +1,39 @@
 import mongoose from "mongoose";
 
-const singleLessonSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
-
-  video_link: String,
-
-  lesson_text: String,
-
-  homework: [
-    {
-      question: {
-        type: String,
-        required: true
-      }
-    }
-  ]
-});
-
 const masterLessonSchema = new mongoose.Schema(
   {
     class: {
-      type: Number,
-      required: true
+      type: String,
+      required: true,
+      trim: true,
     },
-
     subject: {
       type: String,
-      required: true
+      required: true,
+      trim: true,
     },
-
     week: {
       type: Number,
-      required: true
+      required: true,
+      min: 1,
+      max: 52,
     },
-
-    lessons: [singleLessonSchema],
-
+    lessons: {
+      type: mongoose.Schema.Types.Mixed,
+      required: true,
+    },
     version: {
       type: Number,
-      default: 1
-    }
+      default: 1,
+    },
   },
   { timestamps: true }
+);
+
+// 🔐 One master lesson per class + subject + week
+masterLessonSchema.index(
+  { class: 1, subject: 1, week: 1 },
+  { unique: true }
 );
 
 export default mongoose.model("MasterLessonPlan", masterLessonSchema);
